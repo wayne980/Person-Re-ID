@@ -1,0 +1,167 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jan 22 19:13:58 2018
+
+@author: wayne
+"""
+
+from keras.layers import Conv2D, MaxPooling2D, ZeroPadding2D,Conv1D,concatenate
+from keras.layers import Flatten, Dense, Dropout,Activation,subtract
+from keras.layers import Input
+from keras.models import Model
+from keras.utils import np_utils
+#from keras import regularizers
+#from keras.utils import plot_model
+#from keras.models import Sequential
+from keras.optimizers import SGD
+
+#from keras.utils import plot_model
+#from keras.utils.vis_utils import plot_model
+from PIL import Image
+import random
+import numpy as np
+import os
+data_dim=400
+timesteps=10
+nb_epoch=3
+batch_size=4
+
+
+cam_filename=[]
+cam1_train=[]
+cam2_train=[]
+
+head1="F:\\Reid\\iLIDS-VID\\i-LIDS-VID\\images\\cam1\\"
+for filename in os.listdir("F:\\Reid\\iLIDS-VID\\i-LIDS-VID\\images\\cam1"):
+    cam_filename.append(filename)
+    imagename1=[]
+    data_dir=head1+filename
+    for image in os.listdir(data_dir):
+        imagename1.append(image)
+    tmp=Image.open(data_dir+'\\'+imagename1[0])
+    #tmp=tmp.resize((224,224))
+    #tmp=list(tmp)
+    tmp=np.array(tmp)
+    cam1_train.append(tmp)
+a1_train=np.array(cam1_train)
+
+head2="F:\\Reid\\iLIDS-VID\\i-LIDS-VID\\images\\cam2\\"
+for filename in os.listdir("F:\\Reid\\iLIDS-VID\\i-LIDS-VID\\images\\cam2"):
+    cam_filename.append(filename)
+    imagename2=[]
+    data_dir=head2+filename
+    for image in os.listdir(data_dir):
+        imagename2.append(image)
+    tmp=Image.open(data_dir+'\\'+imagename2[0])
+    #tmp=tmp.resize((224,224))
+    #tmp=list(tmp)
+    tmp=np.array(tmp)
+    cam2_train.append(tmp)
+a2_train=np.array(cam2_train)
+#x11_train=np.array(x11_train)
+#np.savetxt("F:\\Reid\\result.txt",x1_train)
+print("cam1:",a1_train.shape)
+print("cam2:",a2_train.shape)
+
+
+#打乱数据，以生成负样本
+index=[i for i in range(len(a1_train))]
+random.shuffle(index)
+x111_train=a1_train[index]
+x222_train=a2_train[index]
+
+
+x1_train=np.row_stack((a1_train,x111_train))
+x2_train=np.row_stack((a2_train,x222_train))
+
+print("x1_train:",x1_train.shape)
+print("x2_train:",x2_train.shape)
+label=[]
+for i in range(300):
+    label.append(1)
+for i in range(300):
+    label.append(0)
+print("len(label):",len(label))
+label=np.array(label)
+print(label.shape)
+
+
+x1_train = x1_train.astype('float32')
+x1_train /= 255
+x2_train = x2_train.astype('float32')
+x2_train /= 255
+
+label=np_utils.to_categorical(label,2)
+print(label.shape)
+
+
+
+
+
+image_input1=Input(shape=(128,64,3))
+image_input2=Input(shape=(128,64,3))
+
+#model.add(Input=(10,224,224,3))
+def share_model(x):
+    x=Conv2D(128,(5,5),strides=1,padding='same',kernel_initializer='he_normal')(x)
+    x=Activation('relu')(x)
+    x=MaxPooling2D(pool_size=(3,3),strides=2,padding='valid')(x)
+    x=Conv2D(64,(3,3),strides=1,padding='same',kernel_initializer='he_normal')(x)
+    x=Activation('relu')(x)
+    x=MaxPooling2D(pool_size=(3,3),strides=2,padding='valid')(x)
+    x=Conv2D(64,(3,3),strides=1,padding='same',kernel_initializer='he_normal')(x)
+    x=Conv2D(64,(3,3),strides=1,padding='same',kernel_initializer='he_normal')(x)
+    x=Conv2D(16,(3,3),strides=1,padding='same',kernel_initializer='he_normal')(x)
+    x=MaxPooling2D(pool_size=(3,3),strides=2,padding='valid')(x)
+    y=Flatten()(x)
+    return y 
+
+x1=share_model(image_input1)
+x2=share_model(image_input2)
+x3=concatenate([x1,x2],axis=-1)
+x4=Dense(100,activation='relu')(x3)
+x5=Dense(2)(x4)
+
+model=Model(inputs=[image_input1,image_input2],outputs=x5)
+model.summary()
+
+
+sgd = SGD(lr=0.0001, decay=1e-6, momentum=0.9, nesterov=True)
+model.compile(loss='categorical_crossentropy', optimizer=sgd,metrics=['acc'])
+
+#plot_model(videomodel, 'lstminput3.png', show_shapes=True)
+
+
+
+model.fit([x1_train,x2_train],label,batch_size=batch_size,epochs=nb_epoch)
+
+
+import matplotlib.pyplot as plt
+
+def cmc_curve(model, camera1, camera2, rank_max=30):
+    num = camera1.shape[0]    
+    rank = []
+    score = []    
+    camera_batch1 = np.zeros(camera1.shape)
+    for i in range(num):
+        for j in range(num):
+            camera_batch1[j] = camera1[i]
+        similarity_batch = model.predict_on_batch([camera_batch1, camera2])
+        sim_trans = similarity_batch.transpose()
+        similarity_rate_sorted = np.argsort(sim_trans[0])
+        for k in range(num):
+            if similarity_rate_sorted[k] == i:
+                rank.append(k+1)
+                break
+    rank_val = 0
+    for i in range(rank_max):
+        rank_val = rank_val + len([j for j in rank if i == j-1])        
+        score.append(rank_val / float(num))
+    return np.array(score)
+
+dd=cmc_curve(model,a1_train,a2_train)      
+print(dd)
+
+xx=range(1,31)
+plt.plot(xx,dd,'o-',label='image_video',color='red')
+plt.show()
