@@ -1,4 +1,4 @@
-#该版本依然针对中文进行处理，但是假如了简繁体转换，以及特殊字符处理，配合chineseprocess3,4.py使用
+#该版本依然针对中文进行处理，但是假如了简繁体转换，以及特殊字符处理，配合chineseprocess3.py使用
 #先生成纯净文本
 # -*- coding: utf-8 -*-
 import logging
