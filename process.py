@@ -1,7 +1,7 @@
 #下载wiki百科英语语料库，并采用gensim进行处理
 # 下载地址 https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles.xml.bz2
 #生成纯净的文本，每一行是一篇wiki百科文章
-
+#python3 环境下运行，24线程全开，处理15G数据，大概一个小时
 
 from __future__ import print_function
 import logging
