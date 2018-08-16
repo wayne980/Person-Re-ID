@@ -3,6 +3,8 @@
 #生成纯净的文本，每一行是一篇wiki百科文章
 #python3 环境下运行，24线程全开，处理15G数据，大概一个小时
 
+#使用命令 python3 process_wiki.py zhwiki-latest-pages-articles.xml.bz2 wiki.zh.txt
+
 from __future__ import print_function
 import logging
 import os.path
