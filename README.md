@@ -1,2 +1,2 @@
-# Person-Re-ID
-code for person re-ID
+# Word2Vec
+code for word2vector
